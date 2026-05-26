@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FARMER
+  RETAILER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  ASSIGNED
+  IN_TRANSIT
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum Currency {
+  SSP
+  USD
+}
+
+enum TruckStatus {
+  AVAILABLE
+  IN_TRANSIT
+  MAINTENANCE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  fullName     String
+  passwordHash String
+  role         Role      @default(RETAILER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[] @relation("FarmerProducts")
+  orders       Order[]   @relation("RetailerOrders")
+
+  @@index([role])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  category    String?
+  imageUrl    String?
+  price       Decimal     @default(0)
+  stock       Int         @default(0)
+  farmerId    String
+  farmer      User        @relation("FarmerProducts", fields: [farmerId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([farmerId])
+  @@index([category])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  retailerId       String
+  retailer         User        @relation("RetailerOrders", fields: [retailerId], references: [id], onDelete: Cascade)
+  status           OrderStatus @default(PENDING)
+  currency         Currency    @default(SSP)
+  total            Decimal     @default(0)
+  totalSSP         Decimal     @default(0)
+  totalUSD         Decimal     @default(0)
+  deliveryLocation String?
+  truckId          String?
+  truck            Truck?      @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  items            OrderItem[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([retailerId])
+  @@index([status])
+  @@index([truckId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Decimal
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Truck {
+  id           String      @id @default(cuid())
+  plateNumber  String      @unique
+  driverName   String
+  driverPhone  String
+  status       TruckStatus @default(AVAILABLE)
+  lat          Float?
+  lng          Float?
+  currentOrderId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  orders       Order[]
+
+  @@index([status])
+}
+
+model PricingRule {
+  id          String   @id @default(cuid())
+  category    String
+  minPriceSSP Decimal  @default(0)
+  maxPriceSSP Decimal  @default(0)
+  minPriceUSD Decimal  @default(0)
+  maxPriceUSD Decimal  @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([category])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
