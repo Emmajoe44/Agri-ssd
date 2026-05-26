@@ -14,7 +14,12 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH;
 const resolvedBasePath =
-  basePath ?? (process.env.NODE_ENV === "production" ? "/Agri-ssd/" : "/");
+  basePath ??
+  (process.env.VERCEL === "1"
+    ? "/"
+    : process.env.NODE_ENV === "production"
+      ? "/Agri-ssd/"
+      : "/");
 
 export default defineConfig({
   base: resolvedBasePath,
